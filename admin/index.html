@@ -405,6 +405,35 @@
     </div>
   </div>
 
+  <!-- APP 设置（PWA） -->
+  <div class="card">
+    <h2>📱 APP 安装设置</h2>
+    <p style="font-size:12px;color:#b03060;opacity:.8;margin-bottom:14px;">自定义安装到手机桌面后的 APP 名字和图标。用户在浏览器打开游戏后选"添加到主屏幕"即可像 APP 一样安装。</p>
+    <div class="field">
+      <label for="appName">APP 名字（显示在手机桌面图标下方）</label>
+      <input type="text" id="appName" placeholder="例如：宝贝消消乐" maxlength="12" />
+    </div>
+    <div class="field">
+      <label for="appIcon">APP 图标（建议 512x512 方形图片）</label>
+      <div style="display:flex; gap:14px; align-items:center; margin-top:8px;">
+        <div id="appIconPreview" style="width:64px; height:64px; border-radius:14px; background:#ffe4ec; display:flex; align-items:center; justify-content:center; font-size:32px; overflow:hidden; border:2px solid #ffd6e3; flex-shrink:0;">💖</div>
+        <div style="flex:1;">
+          <input type="file" id="appIcon" accept="image/*" style="font-size:12px; margin-bottom:4px;" />
+          <div style="font-size:11px; color:#b03060; opacity:.7;">点击上传自定义图标</div>
+        </div>
+      </div>
+    </div>
+    <div class="actions-row">
+      <button class="btn-primary" id="saveAppBtn">💾 保存 APP 设置</button>
+      <button class="btn-secondary" id="resetAppBtn">恢复默认</button>
+    </div>
+    <div class="preview-link">
+      💡 保存后，重新打开游戏页面，浏览器菜单选"添加到主屏幕"即可安装成 APP。<br/>
+      <b>iOS</b>：Safari 打开 → 分享按钮 �� 添加到主屏幕<br/>
+      <b>Android</b>：Chrome 打开 → 菜单 → 添加到主屏幕 / 安装应用
+    </div>
+  </div>
+
   <!-- 照片设置 -->
   <div class="card">
     <h2>📷 替换照片（最多 6 张）</h2>
@@ -501,10 +530,12 @@ function loadConfig() {
             medium: clampLevel(c.levelsPerDiff.medium, DEFAULT_LEVELS_PER_DIFF.medium),
             hard: clampLevel(c.levelsPerDiff.hard, DEFAULT_LEVELS_PER_DIFF.hard)
           }
-        : Object.assign({}, DEFAULT_LEVELS_PER_DIFF)
+        : Object.assign({}, DEFAULT_LEVELS_PER_DIFF),
+      appName: typeof c.appName === 'string' && c.appName.trim() ? c.appName.trim() : '消消乐',
+      appIcon: typeof c.appIcon === 'string' ? c.appIcon : ''
     };
   } catch (e) {
-    return { title: DEFAULT_TITLE, photos: DEFAULT_PHOTOS.slice(), levelsPerDiff: Object.assign({}, DEFAULT_LEVELS_PER_DIFF) };
+    return { title: DEFAULT_TITLE, photos: DEFAULT_PHOTOS.slice(), levelsPerDiff: Object.assign({}, DEFAULT_LEVELS_PER_DIFF), appName: '消消乐', appIcon: '' };
   }
 }
 function clampLevel(v, fallback) {
@@ -569,9 +600,21 @@ function renderConfig() {
   $('levelsEasy').value = cfg.levelsPerDiff.easy;
   $('levelsMedium').value = cfg.levelsPerDiff.medium;
   $('levelsHard').value = cfg.levelsPerDiff.hard;
+  // APP 设置
+  $('appName').value = cfg.appName;
+  renderAppIcon(cfg.appIcon);
   $('titleInput').addEventListener('input', () => {
     $('statTitleLen').textContent = $('titleInput').value.length;
   });
+}
+
+function renderAppIcon(iconData) {
+  const preview = $('appIconPreview');
+  if (iconData) {
+    preview.innerHTML = `<img src="${iconData}" style="width:100%;height:100%;object-fit:cover;" />`;
+  } else {
+    preview.innerHTML = '💖';
+  }
 }
 
 function renderPhotos() {
@@ -748,6 +791,72 @@ $('resetLevelsBtn').addEventListener('click', () => {
   renderConfig();
   showToast('已恢复默认关卡数');
 });
+
+/* APP 图标上传 */
+$('appIcon').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('请选择图片文件', false); return; }
+  if (file.size > 4 * 1024 * 1024) { showToast('图片太大（限制 4MB）', false); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const max = 512;
+      let w = img.width, h = img.height;
+      if (w > h) { h = max * h / w; w = max; }
+      else        { w = max * w / h; h = max; }
+      canvas.width = max; canvas.height = max;
+      const ctx = canvas.getContext('2d');
+      // 居中裁剪
+      ctx.drawImage(img, (max - w) / 2, (max - h) / 2, w, h);
+      const dataUrl = canvas.toDataURL('image/png');
+      renderAppIcon(dataUrl);
+      // 暂存到 dataset，保存时读取
+      $('appIconPreview').dataset.pending = dataUrl;
+      showToast('图标已就位，记得点保存 💖');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+/* APP 设置保存 */
+$('saveAppBtn').addEventListener('click', () => {
+  const name = $('appName').value.trim();
+  if (!name) { showToast('APP 名字不能为空', false); $('appName').focus(); return; }
+  if (name.length > 12) { showToast('APP 名字最多 12 个字', false); return; }
+  const cfg = loadConfig();
+  cfg.appName = name;
+  const pendingIcon = $('appIconPreview').dataset.pending;
+  if (pendingIcon) {
+    cfg.appIcon = pendingIcon;
+    delete $('appIconPreview').dataset.pending;
+  }
+  saveConfig(cfg);
+  // 更新 manifest（动态生成下载链接）
+  updateManifest(cfg);
+  showToast(`APP 设置已保存 ✨ 名字: ${name}`);
+});
+
+$('resetAppBtn').addEventListener('click', () => {
+  if (!confirm('确定恢复默认 APP 设置吗？')) return;
+  const cfg = loadConfig();
+  cfg.appName = '消消乐';
+  cfg.appIcon = '';
+  saveConfig(cfg);
+  renderConfig();
+  delete $('appIconPreview').dataset.pending;
+  updateManifest(cfg);
+  showToast('已恢复默认 APP 设置');
+});
+
+/* 动态更新 manifest（让游戏页读取最新的 APP 名字和图标） */
+function updateManifest(cfg) {
+  // manifest 已经通过 localStorage 在游戏页同步，这里只是提示
+  // 实际的动态 manifest 在游戏页生成
+}
 
 /* 预览 */
 $('previewBtn').addEventListener('click', () => {
