@@ -588,10 +588,18 @@ async function loadRemoteConfig() {
       if (remote && typeof remote === 'object') {
         // 远程配置优先
         CONFIG = Object.assign({}, DEFAULT_CONFIG, remote);
+        // 同步关卡数
+        if (remote.levelsPerDiff && typeof remote.levelsPerDiff === 'object') {
+          for (const k of ['easy','medium','hard']) {
+            const v = parseInt(remote.levelsPerDiff[k]);
+            if (!isNaN(v) && v >= 3 && v <= 20) LEVELS_PER_DIFF[k] = v;
+          }
+        }
         // 写入本地缓存
         localStorage.setItem('matchGameConfig', JSON.stringify(remote));
         REMOTE_CONFIG_LOADED = true;
         applyConfig();
+        // 重新渲染关卡网格（如果在开始界面）
         if (!document.getElementById('startScreen').classList.contains('hide')) {
           renderLevels();
         }
