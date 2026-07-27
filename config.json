@@ -8,9 +8,9 @@
     "../photos/photo5.jpg"
   ],
   "levelsPerDiff": {
-    "easy": 9,
-    "medium": 6,
-    "hard": 6
+    "easy": 20,
+    "medium": 20,
+    "hard": 20
   },
   "appName": "消消乐",
   "appIcon": ""
