@@ -571,10 +571,39 @@ const DEFAULT_CONFIG = {
   appIcon: ""
 };
 let CONFIG = Object.assign({}, DEFAULT_CONFIG);
+// 本地缓存（离线兜底）
 try {
   const stored = JSON.parse(localStorage.getItem('matchGameConfig') || '{}');
   if (stored && typeof stored === 'object') Object.assign(CONFIG, stored);
 } catch (e) { /* ignore */ }
+
+// 远程配置：从 GitHub 仓库的 config.json 读取（所有访客共享）
+let REMOTE_CONFIG_LOADED = false;
+async function loadRemoteConfig() {
+  try {
+    // 加时间戳避免缓存
+    const resp = await fetch('config.json?t=' + Date.now());
+    if (resp.ok) {
+      const remote = await resp.json();
+      if (remote && typeof remote === 'object') {
+        // 远程配置优先
+        CONFIG = Object.assign({}, DEFAULT_CONFIG, remote);
+        // 写入本地缓存
+        localStorage.setItem('matchGameConfig', JSON.stringify(remote));
+        REMOTE_CONFIG_LOADED = true;
+        applyConfig();
+        if (!document.getElementById('startScreen').classList.contains('hide')) {
+          renderLevels();
+        }
+        if (typeof gameActive !== 'undefined' && gameActive) renderBoard();
+        console.log('[配置] 远程 config.json 已加载');
+      }
+    }
+  } catch (e) {
+    console.log('[配置] 远程加载失败，使用本地配置');
+  }
+}
+loadRemoteConfig();
 
 function applyConfig() {
   const title = CONFIG.title || DEFAULT_CONFIG.title;

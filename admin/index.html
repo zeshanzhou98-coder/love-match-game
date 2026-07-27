@@ -465,6 +465,27 @@
     </div>
   </div>
 
+  <!-- GitHub Token 配置（让所有人看到你的修改） -->
+  <div class="card">
+    <h2>🌐 全局同步设置</h2>
+    <p style="font-size:12px;color:#b03060;opacity:.8;margin-bottom:14px;line-height:1.6;">
+      配置 GitHub Token 后，你在后台的修改（标题、照片、关卡数、APP 名字）会<b>同步到云端</b>，<b>所有人打开链接都能看到最新内容</b>。<br/>
+      不配置则只在当前浏览器生效。
+    </p>
+    <div class="field">
+      <label for="ghToken">GitHub Personal Access Token（需要 repo 权限）</label>
+      <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx" />
+    </div>
+    <div class="actions-row">
+      <button class="btn-primary" id="saveTokenBtn">💾 保存 Token</button>
+      <button class="btn-secondary" id="syncNowBtn">🔄 立即同步当前配置</button>
+      <button class="btn-secondary" id="clearTokenBtn">🗑️ 清除 Token</button>
+    </div>
+    <div class="preview-link" id="syncStatus">
+      状态：<b id="tokenStatus">未配置</b>
+    </div>
+  </div>
+
   <!-- 测试入口 -->
   <div class="card">
     <h2>🎮 测试入口</h2>
@@ -543,9 +564,72 @@ function clampLevel(v, fallback) {
   if (isNaN(n)) return fallback;
   return Math.max(3, Math.min(20, n));
 }
-function saveConfig(cfg) {
-  // 确保序列化干净，UTF-8 正常
+let _saveRemoteTimer = null;
+function saveConfig(cfg, syncRemote = true) {
+  // 本地保存（立即生效 + 离线兜底）
   localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+  // 远程同步（防抖，避免频繁调用 API）
+  if (syncRemote && getGHToken()) {
+    clearTimeout(_saveRemoteTimer);
+    _saveRemoteTimer = setTimeout(() => saveConfigRemote(cfg), 800);
+  }
+}
+
+/* ========== 远程配置：通过 GitHub API 写入 config.json（所有访客共享） ========== */
+const GH_TOKEN_KEY = 'matchGameGHToken';
+const GH_REPO = 'zeshanzhou98-coder/love-match-game';
+const GH_CONFIG_PATH = 'config.json';
+
+function getGHToken() {
+  return localStorage.getItem(GH_TOKEN_KEY) || '';
+}
+function setGHToken(t) {
+  localStorage.setItem(GH_TOKEN_KEY, t);
+}
+
+async function saveConfigRemote(cfg) {
+  const token = getGHToken();
+  if (!token) {
+    showToast('未配置 GitHub Token，仅本地保存。请在下方配置 Token 后所有人可见', false);
+    return false;
+  }
+  try {
+    // 1. 获取当前文件 sha（如果存在）
+    let sha = '';
+    try {
+      const getResp = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_CONFIG_PATH}`, {
+        headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
+      });
+      if (getResp.ok) {
+        const data = await getResp.json();
+        sha = data.sha;
+      }
+    } catch (e) { /* 文件可能不存在 */ }
+
+    // 2. 写入/更新文件
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(cfg, null, 2))));
+    const putResp = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_CONFIG_PATH}`, {
+      method: 'PUT',
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: '🔄 后台更新配置',
+        content: content,
+        sha: sha || undefined
+      })
+    });
+
+    if (putResp.ok) {
+      showToast('✅ 配置已同步到 GitHub，所有人刷新即可见');
+      return true;
+    } else {
+      const err = await putResp.json();
+      showToast('同步失败: ' + (err.message || '未知错误'), false);
+      return false;
+    }
+  } catch (e) {
+    showToast('网络错误: ' + e.message, false);
+    return false;
+  }
 }
 
 /* ========== 登录 ========== */
@@ -603,6 +687,7 @@ function renderConfig() {
   // APP 设置
   $('appName').value = cfg.appName;
   renderAppIcon(cfg.appIcon);
+  renderTokenStatus();
   $('titleInput').addEventListener('input', () => {
     $('statTitleLen').textContent = $('titleInput').value.length;
   });
@@ -615,6 +700,13 @@ function renderAppIcon(iconData) {
   } else {
     preview.innerHTML = '💖';
   }
+}
+
+function renderTokenStatus() {
+  const token = getGHToken();
+  $('tokenStatus').textContent = token ? '✅ 已配置（保存即同步到云端）' : '未配置（仅本地生效）';
+  $('ghToken').value = '';
+  $('ghToken').placeholder = token ? '已配置（输入新值覆盖）' : 'ghp_xxxxxxxxxxxx';
 }
 
 function renderPhotos() {
@@ -850,6 +942,34 @@ $('resetAppBtn').addEventListener('click', () => {
   delete $('appIconPreview').dataset.pending;
   updateManifest(cfg);
   showToast('已恢复默认 APP 设置');
+});
+
+/* ========== GitHub Token 管理 ========== */
+$('saveTokenBtn').addEventListener('click', () => {
+  const token = $('ghToken').value.trim();
+  if (!token) { showToast('请输入 Token', false); return; }
+  // 简单校验格式
+  if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+    showToast('Token 格式似乎不对（应以 ghp_ 开头）', false);
+    return;
+  }
+  setGHToken(token);
+  renderTokenStatus();
+  showToast('Token 已保存，后续修改会自动同步到云端 🌐');
+});
+
+$('syncNowBtn').addEventListener('click', async () => {
+  if (!getGHToken()) { showToast('请先配置 GitHub Token', false); return; }
+  const cfg = loadConfig();
+  showToast('正在同步...');
+  await saveConfigRemote(cfg);
+});
+
+$('clearTokenBtn').addEventListener('click', () => {
+  if (!confirm('确定清除 Token 吗？清除后修改仅本地生效。')) return;
+  localStorage.removeItem(GH_TOKEN_KEY);
+  renderTokenStatus();
+  showToast('Token 已清除');
 });
 
 /* 动态更新 manifest（让游戏页读取最新的 APP 名字和图标） */
