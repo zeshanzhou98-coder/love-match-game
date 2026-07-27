@@ -381,6 +381,30 @@
     </div>
   </div>
 
+  <!-- 关卡数量配置 -->
+  <div class="card">
+    <h2>🎯 关卡数量配置</h2>
+    <p style="font-size:12px;color:#b03060;opacity:.8;margin-bottom:14px;">设置每个难度下的关卡数量（范围 3-20 关）。关卡难度会自动递增。</p>
+    <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px;">
+      <div class="field" style="flex:1; min-width:120px; margin-bottom:0;">
+        <label for="levelsEasy">🌱 简单 关卡数</label>
+        <input type="number" id="levelsEasy" min="3" max="20" step="1" />
+      </div>
+      <div class="field" style="flex:1; min-width:120px; margin-bottom:0;">
+        <label for="levelsMedium">🌸 中等 关卡数</label>
+        <input type="number" id="levelsMedium" min="3" max="20" step="1" />
+      </div>
+      <div class="field" style="flex:1; min-width:120px; margin-bottom:0;">
+        <label for="levelsHard">🌹 困难 关卡数</label>
+        <input type="number" id="levelsHard" min="3" max="20" step="1" />
+      </div>
+    </div>
+    <div class="actions-row">
+      <button class="btn-primary" id="saveLevelsBtn">💾 保存关卡数</button>
+      <button class="btn-secondary" id="resetLevelsBtn">恢复默认（6 关）</button>
+    </div>
+  </div>
+
   <!-- 照片设置 -->
   <div class="card">
     <h2>📷 替换照片（最多 6 张）</h2>
@@ -464,16 +488,29 @@ const DEFAULT_PHOTOS = [
 ];
 const DEFAULT_TITLE = '生日消消乐 · 甜蜜闯关';
 
+const DEFAULT_LEVELS_PER_DIFF = { easy: 6, medium: 6, hard: 6 };
 function loadConfig() {
   try {
     const c = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
     return {
       title: typeof c.title === 'string' ? c.title : DEFAULT_TITLE,
-      photos: Array.isArray(c.photos) && c.photos.length > 0 ? c.photos.slice(0, 6) : DEFAULT_PHOTOS.slice()
+      photos: Array.isArray(c.photos) && c.photos.length > 0 ? c.photos.slice(0, 6) : DEFAULT_PHOTOS.slice(),
+      levelsPerDiff: (c.levelsPerDiff && typeof c.levelsPerDiff === 'object')
+        ? {
+            easy: clampLevel(c.levelsPerDiff.easy, DEFAULT_LEVELS_PER_DIFF.easy),
+            medium: clampLevel(c.levelsPerDiff.medium, DEFAULT_LEVELS_PER_DIFF.medium),
+            hard: clampLevel(c.levelsPerDiff.hard, DEFAULT_LEVELS_PER_DIFF.hard)
+          }
+        : Object.assign({}, DEFAULT_LEVELS_PER_DIFF)
     };
   } catch (e) {
-    return { title: DEFAULT_TITLE, photos: DEFAULT_PHOTOS.slice() };
+    return { title: DEFAULT_TITLE, photos: DEFAULT_PHOTOS.slice(), levelsPerDiff: Object.assign({}, DEFAULT_LEVELS_PER_DIFF) };
   }
+}
+function clampLevel(v, fallback) {
+  const n = parseInt(v);
+  if (isNaN(n)) return fallback;
+  return Math.max(3, Math.min(20, n));
 }
 function saveConfig(cfg) {
   // 确保序列化干净，UTF-8 正常
@@ -528,6 +565,10 @@ function renderConfig() {
   $('titleInput').value = cfg.title;
   $('statPhotos').textContent = cfg.photos.length;
   $('statTitleLen').textContent = cfg.title.length;
+  // 关卡数配置
+  $('levelsEasy').value = cfg.levelsPerDiff.easy;
+  $('levelsMedium').value = cfg.levelsPerDiff.medium;
+  $('levelsHard').value = cfg.levelsPerDiff.hard;
   $('titleInput').addEventListener('input', () => {
     $('statTitleLen').textContent = $('titleInput').value.length;
   });
@@ -664,6 +705,48 @@ $('saveCredBtn').addEventListener('click', () => {
   saveCred(newU, newP);
   $('newPass').value = '';
   showToast('账号密码已更新 ✅ 下次用新账号密码登录');
+});
+
+/* 关卡数保存 */
+$('saveLevelsBtn').addEventListener('click', () => {
+  const easy = clampLevel($('levelsEasy').value, DEFAULT_LEVELS_PER_DIFF.easy);
+  const medium = clampLevel($('levelsMedium').value, DEFAULT_LEVELS_PER_DIFF.medium);
+  const hard = clampLevel($('levelsHard').value, DEFAULT_LEVELS_PER_DIFF.hard);
+  // 校验输入
+  const rawInputs = [
+    { id: 'levelsEasy', val: easy, raw: $('levelsEasy').value },
+    { id: 'levelsMedium', val: medium, raw: $('levelsMedium').value },
+    { id: 'levelsHard', val: hard, raw: $('levelsHard').value }
+  ];
+  for (const it of rawInputs) {
+    if (it.raw === '' || isNaN(parseInt(it.raw))) {
+      showToast('关卡数不能为空且必须是数字', false);
+      $(it.id).focus();
+      return;
+    }
+    if (it.val < 3 || it.val > 20) {
+      showToast('关卡数必须在 3-20 之间', false);
+      $(it.id).focus();
+      return;
+    }
+  }
+  const cfg = loadConfig();
+  cfg.levelsPerDiff = { easy, medium, hard };
+  saveConfig(cfg);
+  // 同步输入框显示（已被 clamp 过）
+  $('levelsEasy').value = easy;
+  $('levelsMedium').value = medium;
+  $('levelsHard').value = hard;
+  showToast(`关卡数已保存 ✅ 简单${easy}/中等${medium}/困难${hard}`);
+});
+
+$('resetLevelsBtn').addEventListener('click', () => {
+  if (!confirm('确定恢复默认关卡数（每难度 6 关）吗？')) return;
+  const cfg = loadConfig();
+  cfg.levelsPerDiff = Object.assign({}, DEFAULT_LEVELS_PER_DIFF);
+  saveConfig(cfg);
+  renderConfig();
+  showToast('已恢复默认关卡数');
 });
 
 /* 预览 */
