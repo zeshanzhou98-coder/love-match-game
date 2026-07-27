@@ -14,6 +14,23 @@
     user-select: none;
     -webkit-user-select: none;
   }
+  /* 浪漫光晕背景 */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255, 180, 200, .5) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255, 210, 220, .6) 0%, transparent 45%),
+      radial-gradient(circle at 50% 90%, rgba(255, 160, 190, .4) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+    animation: glow 8s ease-in-out infinite alternate;
+  }
+  @keyframes glow {
+    0%   { opacity: .7; transform: scale(1); }
+    100% { opacity: 1;  transform: scale(1.05); }
+  }
 
   /* 飘落爱心 */
   .heart {
@@ -26,51 +43,270 @@
     animation: fall linear forwards;
   }
   @keyframes fall {
-    0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+    0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 0; }
     10%  { opacity: 1; }
-    100% { transform: translateY(110vh) rotate(360deg); opacity: 0.85; }
+    50%  { transform: translateY(50vh) rotate(180deg) scale(1.1); }
+    100% { transform: translateY(110vh) rotate(360deg) scale(.9); opacity: 0.85; }
   }
 
-  /* 顶部信息栏 */
+  /* 点击爆出的爱心粒子 */
+  .burst-heart {
+    position: fixed;
+    pointer-events: none;
+    z-index: 50;
+    will-change: transform, opacity;
+    animation: burst .9s ease-out forwards;
+  }
+  @keyframes burst {
+    0%   { transform: translate(0,0) scale(.3); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1.4); opacity: 0; }
+  }
+
+  /* ========== 开始界面（难度选择 + 关卡） ========== */
+  .start-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .start-screen.hide { display: none; }
+  .logo-block {
+    text-align: center;
+    margin-bottom: 24px;
+    animation: floatIn 1s ease both;
+  }
+  @keyframes floatIn { from{opacity:0; transform:translateY(20px)} to{opacity:1; transform:translateY(0)} }
+  .logo-block .big-heart {
+    font-size: 64px;
+    display: inline-block;
+    animation: heartbeat 1.2s ease-in-out infinite;
+    filter: drop-shadow(0 8px 20px rgba(255, 80, 130, .5));
+  }
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    14%      { transform: scale(1.15); }
+    28%      { transform: scale(1); }
+    42%      { transform: scale(1.15); }
+    70%      { transform: scale(1); }
+  }
+  .logo-block h1 {
+    color: #e63b6b;
+    font-size: 26px;
+    margin-top: 8px;
+    text-shadow: 0 3px 0 #fff, 0 0 18px rgba(255, 150, 180, .6);
+    letter-spacing: 1px;
+  }
+  .logo-block .subtitle {
+    color: #b03060;
+    font-size: 13px;
+    margin-top: 6px;
+    opacity: .85;
+  }
+
+  /* 难度选择 */
+  .difficulty-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .diff-btn {
+    border: none;
+    cursor: pointer;
+    padding: 12px 18px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #ffb3c8, #ff8fb1);
+    box-shadow: 0 6px 14px rgba(255, 130, 160, .3);
+    transition: all .2s;
+    letter-spacing: 1px;
+    opacity: .65;
+  }
+  .diff-btn.active {
+    opacity: 1;
+    transform: scale(1.06);
+    box-shadow: 0 8px 20px rgba(255, 80, 130, .45);
+  }
+  .diff-btn[data-diff="easy"]   { background: linear-gradient(135deg, #7ed957, #4caf50); }
+  .diff-btn[data-diff="medium"] { background: linear-gradient(135deg, #ffb86b, #ff8a3d); }
+  .diff-btn[data-diff="hard"]   { background: linear-gradient(135deg, #ff6b9d, #e63b6b); }
+
+  /* 关卡选择 */
+  .levels-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    max-width: 340px;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+  .level-card {
+    aspect-ratio: 1;
+    border-radius: 16px;
+    background: rgba(255,255,255,.7);
+    border: 2px solid #ffd6e3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    backdrop-filter: blur(6px);
+  }
+  .level-card:hover { transform: translateY(-3px); border-color: #ff8fb1; }
+  .level-card .num {
+    font-size: 22px;
+    font-weight: 800;
+    color: #e63b6b;
+  }
+  .level-card .label {
+    font-size: 10px;
+    color: #b03060;
+    margin-top: 2px;
+  }
+  .level-card.locked {
+    cursor: not-allowed;
+    opacity: .5;
+    background: rgba(255,255,255,.4);
+  }
+  .level-card.locked .num { color: #c89aa9; }
+  .level-card.locked::after {
+    content: "🔒";
+    position: absolute;
+    font-size: 20px;
+  }
+  .level-card.completed::before {
+    content: "⭐";
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    font-size: 16px;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,.2));
+  }
+  .level-card.current {
+    border-color: #ff3b7e;
+    box-shadow: 0 0 0 3px rgba(255, 59, 126, .25);
+  }
+
+  .start-btn {
+    border: none;
+    cursor: pointer;
+    padding: 14px 40px;
+    border-radius: 26px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #ff7aa6, #ff4d88);
+    box-shadow: 0 8px 20px rgba(255, 80, 130, .4);
+    transition: transform .15s;
+    letter-spacing: 2px;
+    animation: pulseBtn 1.6s ease-in-out infinite;
+  }
+  @keyframes pulseBtn {
+    0%, 100% { box-shadow: 0 8px 20px rgba(255, 80, 130, .4); }
+    50%      { box-shadow: 0 8px 28px rgba(255, 80, 130, .65); }
+  }
+  .start-btn:active { transform: scale(.96); }
+
+  /* ========== 游戏界面 ========== */
+  .game-screen { display: none; }
+  .game-screen.show { display: block; }
+
   .topbar {
     position: relative;
     z-index: 5;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 18px 6px;
+    padding: 12px 16px 4px;
     color: #b03060;
   }
   .title {
-    font-size: 20px;
+    font-size: 17px;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: .5px;
     text-shadow: 0 2px 0 #fff, 0 0 12px rgba(255, 150, 180, .5);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
   }
-  .title .heart-emoji { font-size: 22px; animation: pulse 1.4s infinite; display:inline-block; }
+  .title .heart-emoji { font-size: 20px; animation: pulse 1.4s infinite; display:inline-block; }
   @keyframes pulse {
     0%, 100% { transform: scale(1); }
     50%      { transform: scale(1.18); }
   }
+  .title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .back-btn {
+    background: rgba(255,255,255,.7);
+    border: none;
+    color: #d63060;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    margin-right: 8px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(255, 130, 160, .2);
+  }
+
   .stats {
     display: flex;
-    gap: 14px;
-    font-size: 14px;
+    gap: 8px;
+    font-size: 12px;
     font-weight: 600;
     background: rgba(255,255,255,0.7);
-    border-radius: 18px;
-    padding: 6px 12px;
+    border-radius: 16px;
+    padding: 5px 10px;
     backdrop-filter: blur(6px);
     box-shadow: 0 2px 8px rgba(255, 150, 180, .25);
+    flex-shrink: 0;
   }
-  .stats span b { color: #e63b6b; margin-left: 4px; }
-  .stats .target { font-size: 12px; opacity: .8; }
+  .stats span b { color: #e63b6b; margin-left: 3px; }
+  .stats .target { font-size: 11px; opacity: .8; }
+
+  /* 关卡 + 步数显示 */
+  .level-info {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px 4px;
+    font-size: 12px;
+    color: #b03060;
+  }
+  .level-info .lvl-tag {
+    background: linear-gradient(135deg, #ff8fb1, #ff5c8a);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 11px;
+    box-shadow: 0 2px 6px rgba(255, 100, 130, .3);
+  }
+  .level-info .moves-left {
+    font-weight: 700;
+  }
+  .level-info .moves-left.warn { color: #e63b6b; animation: pulse 1s infinite; }
 
   /* 进度条 */
   .progress-wrap {
     position: relative;
     z-index: 5;
-    margin: 4px 18px 12px;
+    margin: 4px 16px 8px;
     background: rgba(255,255,255,0.6);
     border-radius: 10px;
     height: 10px;
@@ -95,7 +331,7 @@
     width: calc(100vw - 24px);
     max-width: 480px;
     aspect-ratio: 1 / 1;
-    margin: 6px auto 8px;
+    margin: 4px auto 6px;
     padding: 10px;
     background: rgba(255,255,255,0.55);
     border-radius: 22px;
@@ -154,10 +390,6 @@
     40%  { transform: scale(1.25); opacity: 1; }
     100% { transform: scale(0);  opacity: 0; }
   }
-  .tile.swap {
-    transition: transform .25s ease;
-    z-index: 2;
-  }
 
   /* 底部按钮 */
   .actions {
@@ -165,16 +397,16 @@
     z-index: 5;
     display: flex;
     justify-content: center;
-    gap: 12px;
-    padding: 6px 18px 18px;
+    gap: 10px;
+    padding: 4px 16px 14px;
   }
   .btn {
     border: none;
     outline: none;
     cursor: pointer;
-    padding: 10px 22px;
-    border-radius: 22px;
-    font-size: 14px;
+    padding: 9px 18px;
+    border-radius: 20px;
+    font-size: 13px;
     font-weight: 700;
     color: #fff;
     background: linear-gradient(135deg, #ff7aa6, #ff4d88);
@@ -185,7 +417,7 @@
   .btn.secondary { background: linear-gradient(135deg, #fff, #ffe2ec); color: #d6336c; box-shadow: 0 6px 14px rgba(220, 100, 140, .25); }
   .btn:active { transform: scale(.95); }
 
-  /* 庆祝弹层 */
+  /* 弹层 */
   .modal {
     position: fixed; inset: 0;
     background: rgba(255, 220, 230, .85);
@@ -211,15 +443,17 @@
   .modal-card h2 { color: #e63b6b; font-size: 22px; margin-bottom: 8px; }
   .modal-card p { color: #b03060; font-size: 14px; line-height: 1.7; margin-bottom: 14px; }
   .modal-card .btn { margin: 4px; }
+  .modal-card .stars { font-size: 32px; margin: 6px 0 10px; }
+  .modal-card .btn-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
   .footer-tip {
     position: relative;
     z-index: 5;
     text-align: center;
-    font-size: 12px;
+    font-size: 11px;
     color: #b03060;
     opacity: .8;
-    padding-bottom: 10px;
+    padding-bottom: 8px;
   }
 
   /* 提示闪光 */
@@ -228,44 +462,95 @@
     0%, 100% { box-shadow: 0 3px 6px rgba(255, 100, 130, .2); }
     50%      { box-shadow: 0 0 0 4px #fff, 0 0 0 7px #ffd1e0, 0 6px 16px rgba(255, 80, 130, .45); }
   }
+
+  /* 隐藏 */
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="title"><span class="heart-emoji">💖</span><span id="title-text">生日消消乐 · 甜蜜闯关</span></div>
-  <div class="stats">
-    <span>🎯 分数<b id="score">0</b></span>
-    <span class="target">/ 1000</span>
-    <span>👣 步数<b id="moves">0</b></span>
+<!-- ========== 开始界面 ========== -->
+<div class="start-screen" id="startScreen">
+  <div class="logo-block">
+    <div class="big-heart">💖</div>
+    <h1 id="title-text">生日消消乐 · 甜蜜闯关</h1>
+    <div class="subtitle">💗 为你而设的甜蜜挑战 💗</div>
   </div>
+
+  <div class="difficulty-row" id="difficultyRow">
+    <button class="diff-btn active" data-diff="easy">🌱 简单</button>
+    <button class="diff-btn" data-diff="medium">🌸 中等</button>
+    <button class="diff-btn" data-diff="hard">🌹 困难</button>
+  </div>
+
+  <div class="levels-grid" id="levelsGrid"></div>
+
+  <button class="start-btn" id="startBtn">💕 开始游戏</button>
 </div>
 
-<div class="progress-wrap"><div class="progress-bar" id="progress"></div></div>
+<!-- ========== 游戏界面 ========== -->
+<div class="game-screen" id="gameScreen">
+  <div class="topbar">
+    <div class="title">
+      <button class="back-btn" id="backBtn">←</button>
+      <span class="heart-emoji">💖</span>
+      <span class="title-text" id="title-text-game">生日消消乐</span>
+    </div>
+    <div class="stats">
+      <span>🎯<b id="score">0</b></span>
+      <span class="target">/<span id="targetScore">1000</span></span>
+      <span>👣<b id="moves">0</b></span>
+    </div>
+  </div>
 
-<div class="board-wrap">
-  <div class="board" id="board"></div>
+  <div class="level-info">
+    <span class="lvl-tag" id="lvlTag">简单 · 第 1 关</span>
+    <span class="moves-left" id="movesLeft">剩余步数: 30</span>
+  </div>
+
+  <div class="progress-wrap"><div class="progress-bar" id="progress"></div></div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" id="newGame">🎀 重开</button>
+    <button class="btn secondary" id="shuffle">🔀 打乱</button>
+    <button class="btn secondary" id="hintBtn">✨ 提示</button>
+  </div>
+
+  <div class="footer-tip">💗 消消看，记录每一份甜蜜 💗</div>
 </div>
-
-<div class="actions">
-  <button class="btn" id="newGame">🎀 新游戏</button>
-  <button class="btn secondary" id="shuffle">🔀 打乱</button>
-  <button class="btn secondary" id="hintBtn">✨ 提示</button>
-</div>
-
-<div class="footer-tip">💗 消消看，记录每一份甜蜜 💗</div>
 
 <!-- 胜利弹层 -->
 <div class="modal" id="winModal">
   <div class="modal-card">
     <h2>🎉 通关啦！🎉</h2>
+    <div class="stars" id="winStars">⭐⭐⭐</div>
     <p>恭喜达成 <b id="finalScore">1000</b> 分！<br/>把所有的甜蜜都收集起来啦 💕</p>
-    <button class="btn" id="playAgain">再来一局</button>
+    <div class="btn-row">
+      <button class="btn" id="nextLevelBtn">下一关 →</button>
+      <button class="btn secondary" id="playAgain">再玩一次</button>
+    </div>
   </div>
 </div>
 
-<!-- 治愈音效：使用 WebAudio 合成，无外部依赖 -->
+<!-- 失败弹层 -->
+<div class="modal" id="loseModal">
+  <div class="modal-card">
+    <h2>💖 别灰心 💖</h2>
+    <p>步数用完啦～<br/>再来一次，一定能通关！</p>
+    <div class="btn-row">
+      <button class="btn" id="retryBtn">🔄 再试一次</button>
+      <button class="btn secondary" id="backToMenuBtn">返回菜单</button>
+    </div>
+  </div>
+</div>
+
 <script>
+'use strict';
+
 /* ========== 配置（与后台 localStorage 同步） ========== */
 const DEFAULT_CONFIG = {
   title: "生日消消乐 · 甜蜜闯关",
@@ -283,7 +568,12 @@ try {
   if (stored && typeof stored === 'object') Object.assign(CONFIG, stored);
 } catch (e) { /* ignore */ }
 
-document.getElementById('title-text').textContent = CONFIG.title || DEFAULT_CONFIG.title;
+function applyConfig() {
+  const title = CONFIG.title || DEFAULT_CONFIG.title;
+  document.getElementById('title-text').textContent = title;
+  document.getElementById('title-text-game').textContent = title;
+}
+applyConfig();
 
 /* ========== 治愈音效（WebAudio 合成） ========== */
 const Sound = (() => {
@@ -318,11 +608,13 @@ const Sound = (() => {
     fail()   { tone(220, .15, 'sawtooth', .08); tone(196, .2, 'sawtooth', .08, .12); },
     win()    {
       [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .25, 'sine', .14, i * .12));
+    },
+    lose()   {
+      [392, 330, 262].forEach((f, i) => tone(f, .3, 'sine', .12, i * .15));
     }
   };
 })();
 
-/* 用户首次交互后唤醒音频上下文 */
 document.addEventListener('touchstart', () => Sound.select(), { once: true });
 document.addEventListener('click', () => Sound.select(), { once: true });
 
@@ -343,49 +635,159 @@ function spawnHeart() {
 setInterval(spawnHeart, 350);
 for (let i = 0; i < 8; i++) setTimeout(spawnHeart, i * 200);
 
+/* ========== 点击爆爱心特效 ========== */
+function burstHearts(x, y, count = 8) {
+  const symbols = ['💖', '💕', '💗', '✨', '💘'];
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'burst-heart';
+    el.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.fontSize = (12 + Math.random() * 14) + 'px';
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+    const dist = 40 + Math.random() * 50;
+    el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 900);
+  }
+}
+
+/* ========== 难度 & 关卡配置 ========== */
+const DIFFICULTY = {
+  easy:   { name: '简单', target: 800,  moves: 30, levels: 6, scoreMul: 1.0 },
+  medium: { name: '中等', target: 1200, moves: 25, levels: 6, scoreMul: 1.2 },
+  hard:   { name: '困难', target: 1800, moves: 20, levels: 6, scoreMul: 1.5 }
+};
+
+// 关卡进度（localStorage 持久化）
+const PROGRESS_KEY = 'matchGameProgress';
+function loadProgress() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
+    if (p && typeof p === 'object') return p;
+  } catch (e) {}
+  return { easy: 1, medium: 1, hard: 1 }; // 每个难度默认解锁第 1 关
+}
+function saveProgress(p) {
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
+}
+let progress = loadProgress();
+
+let currentDiff = 'easy';
+let currentLevel = 1;
+
+/* ========== 开始界面逻辑 ========== */
+function renderLevels() {
+  const grid = document.getElementById('levelsGrid');
+  const diff = DIFFICULTY[currentDiff];
+  const unlocked = progress[currentDiff] || 1;
+  grid.innerHTML = '';
+  for (let i = 1; i <= diff.levels; i++) {
+    const card = document.createElement('div');
+    card.className = 'level-card';
+    if (i > unlocked) card.classList.add('locked');
+    if (i < unlocked) card.classList.add('completed');
+    if (i === currentLevel) card.classList.add('current');
+    card.innerHTML = `<div class="num">${i}</div><div class="label">第 ${i} 关</div>`;
+    if (i <= unlocked) {
+      card.addEventListener('click', () => {
+        currentLevel = i;
+        renderLevels();
+      });
+    }
+    grid.appendChild(card);
+  }
+}
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentDiff = btn.dataset.diff;
+    currentLevel = 1;
+    renderLevels();
+    Sound.select();
+  });
+});
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  startGame();
+});
+
+document.getElementById('backBtn').addEventListener('click', () => {
+  document.getElementById('gameScreen').classList.remove('show');
+  document.getElementById('startScreen').classList.remove('hide');
+  renderLevels();
+});
+
 /* ========== 游戏逻辑 ========== */
 const ROWS = 8, COLS = 8;
-const TILE_TYPES = 5;       // 5 种照片
+const TILE_TYPES = 5;
 const BORDER_COLORS = ['b1', 'b2', 'b3', 'b4', 'b5'];
-const TARGET_SCORE = 1000;  // 目标分数：达到即通关
 
-let board = [];      // 每格元素：type(0..4)
-let selected = null; // {r,c}
+let board = [];
+let selected = null;
 let score = 0, moves = 0;
+let targetScore = 1000;
+let maxMoves = 30;
 let isAnimating = false;
+let gameActive = false;
 
 const boardEl = document.getElementById('board');
 const scoreEl = document.getElementById('score');
 const movesEl = document.getElementById('moves');
+const targetScoreEl = document.getElementById('targetScore');
 const progressEl = document.getElementById('progress');
-const winModal = document.getElementById('winModal');
+const movesLeftEl = document.getElementById('movesLeft');
+const lvlTagEl = document.getElementById('lvlTag');
+
+function startGame() {
+  const diff = DIFFICULTY[currentDiff];
+  // 关卡难度递增：每关目标分数 +10%，步数 -1
+  targetScore = Math.round(diff.target * Math.pow(1.1, currentLevel - 1));
+  maxMoves = Math.max(12, diff.moves - (currentLevel - 1));
+  score = 0;
+  moves = 0;
+
+  document.getElementById('startScreen').classList.add('hide');
+  document.getElementById('gameScreen').classList.add('show');
+  document.getElementById('winModal').classList.remove('show');
+  document.getElementById('loseModal').classList.remove('show');
+
+  targetScoreEl.textContent = targetScore;
+  lvlTagEl.textContent = `${diff.name} · 第 ${currentLevel} 关`;
+
+  makeBoard();
+  renderBoard();
+  updateHUD();
+  gameActive = true;
+}
 
 function makeBoard() {
-  // 计算总数，每种 6 个以上，保证总能消完
   const total = ROWS * COLS;
-  // 简化：固定每种类型的数量，5 种正好放满
   const per = Math.floor(total / TILE_TYPES);
   const arr = [];
   for (let t = 0; t < TILE_TYPES; t++) for (let i = 0; i < per; i++) arr.push(t);
   while (arr.length < total) arr.push(arr.length % TILE_TYPES);
-  // 打乱
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  // 检测初始是否有可消，没有就重新打乱
   board = [];
   for (let r = 0; r < ROWS; r++) {
     const row = [];
     for (let c = 0; c < COLS; c++) row.push(arr[r * COLS + c]);
     board.push(row);
   }
-  // 强制保证无初始三连
   fixInitial();
-  // 至少保证有一步可走
-  while (!hasValidMove()) {
+  let safety = 0;
+  while (!hasValidMove() && safety < 50) {
     for (let r = 0; r < ROWS; r++)
       for (let c = 0; c < COLS; c++) board[r][c] = Math.floor(Math.random() * TILE_TYPES);
+    fixInitial();
+    safety++;
   }
 }
 
@@ -393,12 +795,10 @@ function fixInitial() {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       let t = board[r][c];
-      // 左侧两个相同
       if (c >= 2 && board[r][c-1] === t && board[r][c-2] === t) {
         t = (t + 1) % TILE_TYPES;
         board[r][c] = t;
       }
-      // 上方两个相同
       if (r >= 2 && board[r-1][c] === t && board[r-2][c] === t) {
         t = (t + 1) % TILE_TYPES;
         board[r][c] = t;
@@ -420,8 +820,12 @@ function renderBoard() {
       img.alt = '';
       img.draggable = false;
       tile.appendChild(img);
-      tile.addEventListener('click', () => onTileClick(r, c, tile));
-      tile.addEventListener('touchstart', e => { e.preventDefault(); onTileClick(r, c, tile); }, { passive: false });
+      tile.addEventListener('click', (e) => onTileClick(r, c, tile, e));
+      tile.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        onTileClick(r, c, tile, { clientX: touch.clientX, clientY: touch.clientY });
+      }, { passive: false });
       boardEl.appendChild(tile);
     }
   }
@@ -430,7 +834,6 @@ function renderBoard() {
 
 function findAllMatches() {
   const set = new Set();
-  // 横向
   for (let r = 0; r < ROWS; r++) {
     let run = 1;
     for (let c = 1; c <= COLS; c++) {
@@ -439,7 +842,6 @@ function findAllMatches() {
       run = 1;
     }
   }
-  // 纵向
   for (let c = 0; c < COLS; c++) {
     let run = 1;
     for (let r = 1; r <= ROWS; r++) {
@@ -453,10 +855,15 @@ function findAllMatches() {
 
 function removeMatches(set) {
   if (set.size === 0) return false;
+  // 在每个消除位置爆爱心
   set.forEach(key => {
     const [r, c] = key.split(',').map(Number);
     const tile = boardEl.children[r * COLS + c];
-    if (tile) tile.classList.add('matched');
+    if (tile) {
+      tile.classList.add('matched');
+      const rect = tile.getBoundingClientRect();
+      burstHearts(rect.left + rect.width / 2, rect.top + rect.height / 2, 5);
+    }
   });
   setTimeout(() => {
     set.forEach(key => {
@@ -464,7 +871,6 @@ function removeMatches(set) {
       board[r][c] = -1;
     });
     dropAndFill();
-    // 连锁
     setTimeout(() => {
       const next = findAllMatches();
       if (next.size > 0) {
@@ -472,11 +878,9 @@ function removeMatches(set) {
         Sound.match();
         updateHUD();
         removeMatches(next);
-      } else if (score >= TARGET_SCORE) {
-        showWin();
-      } else if (!hasValidMove()) {
-        // 没步可走自动打乱
-        shuffleBoard();
+      } else {
+        isAnimating = false;
+        checkGameEnd();
       }
     }, 320);
   }, 380);
@@ -484,7 +888,6 @@ function removeMatches(set) {
 }
 
 function dropAndFill() {
-  // 下落
   for (let c = 0; c < COLS; c++) {
     let writeRow = ROWS - 1;
     for (let r = ROWS - 1; r >= 0; r--) {
@@ -494,17 +897,21 @@ function dropAndFill() {
         writeRow--;
       }
     }
-    // 顶部填充
     for (let r = writeRow; r >= 0; r--) {
       board[r][c] = Math.floor(Math.random() * TILE_TYPES);
     }
   }
   renderBoard();
-  // 防止填充后立刻出现新的相邻三连也无所谓，会被 removeMatches 消除
 }
 
-function onTileClick(r, c, tile) {
-  if (isAnimating) return;
+function onTileClick(r, c, tile, e) {
+  if (isAnimating || !gameActive) return;
+
+  // 点击爆爱心特效
+  if (e && e.clientX !== undefined) {
+    burstHearts(e.clientX, e.clientY, 4);
+  }
+
   if (!selected) {
     selected = { r, c };
     tile.classList.add('selected');
@@ -516,18 +923,15 @@ function onTileClick(r, c, tile) {
     selected = null;
     return;
   }
-  // 是否相邻
   const dr = Math.abs(selected.r - r);
   const dc = Math.abs(selected.c - c);
   if (dr + dc !== 1) {
-    // 改成选择新的
     document.querySelectorAll('.tile.selected').forEach(t => t.classList.remove('selected'));
     selected = { r, c };
     tile.classList.add('selected');
     Sound.select();
     return;
   }
-  // 执行交换
   const a = selected;
   const b = { r, c };
   document.querySelectorAll('.tile.selected').forEach(t => t.classList.remove('selected'));
@@ -542,16 +946,13 @@ function onTileClick(r, c, tile) {
     updateHUD();
     setTimeout(() => {
       removeMatches(matches);
-      isAnimating = false;
-      // 即时检测通关（交换直接达成）
-      if (score >= TARGET_SCORE) setTimeout(showWin, 600);
     }, 220);
   } else {
-    // 不消除则换回
     Sound.fail();
     setTimeout(() => {
       swapTiles(a, b);
       isAnimating = false;
+      checkGameEnd();
     }, 280);
   }
 }
@@ -564,7 +965,6 @@ function swapTiles(a, b) {
 function hasValidMove() {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      // 横向交换
       if (c < COLS - 1) {
         [board[r][c], board[r][c+1]] = [board[r][c+1], board[r][c]];
         if (findAllMatches().size > 0) {
@@ -573,7 +973,6 @@ function hasValidMove() {
         }
         [board[r][c], board[r][c+1]] = [board[r][c+1], board[r][c]];
       }
-      // 纵向交换
       if (r < ROWS - 1) {
         [board[r][c], board[r+1][c]] = [board[r+1][c], board[r][c]];
         if (findAllMatches().size > 0) {
@@ -619,6 +1018,7 @@ function showHint() {
 function shuffleBoard() {
   const all = [];
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) all.push(board[r][c]);
+  let safety = 0;
   do {
     for (let i = all.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -627,53 +1027,122 @@ function shuffleBoard() {
     let idx = 0;
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) board[r][c] = all[idx++];
     fixInitial();
-  } while (!hasValidMove() || findAllMatches().size > 0);
+    safety++;
+  } while ((!hasValidMove() || findAllMatches().size > 0) && safety < 30);
   renderBoard();
 }
 
 function updateHUD() {
   scoreEl.textContent = score;
   movesEl.textContent = moves;
+  const left = maxMoves - moves;
+  movesLeftEl.textContent = `剩余步数: ${left}`;
+  movesLeftEl.classList.toggle('warn', left <= 5);
   updateProgress();
 }
 
 function updateProgress() {
-  const pct = Math.min(100, Math.round((score / TARGET_SCORE) * 100));
+  const pct = Math.min(100, Math.round((score / targetScore) * 100));
   progressEl.style.width = pct + '%';
+}
+
+function checkGameEnd() {
+  if (!gameActive) return;
+  if (score >= targetScore) {
+    showWin();
+  } else if (moves >= maxMoves) {
+    showLose();
+  } else if (!hasValidMove()) {
+    shuffleBoard();
+  }
+}
+
+function calcStars() {
+  // 根据剩余步数比例评星
+  const left = maxMoves - moves;
+  const ratio = left / maxMoves;
+  if (ratio >= 0.5) return 3;
+  if (ratio >= 0.2) return 2;
+  return 1;
 }
 
 function showWin() {
   if (document.getElementById('winModal').classList.contains('show')) return;
+  gameActive = false;
+  const stars = calcStars();
+  document.getElementById('winStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
   document.getElementById('finalScore').textContent = score;
+
+  // 解锁下一关
+  const diff = DIFFICULTY[currentDiff];
+  if (currentLevel < diff.levels) {
+    if (!progress[currentDiff] || progress[currentDiff] < currentLevel + 1) {
+      progress[currentDiff] = currentLevel + 1;
+      saveProgress(progress);
+    }
+    document.getElementById('nextLevelBtn').classList.remove('hidden');
+  } else {
+    document.getElementById('nextLevelBtn').classList.add('hidden');
+  }
+
   document.getElementById('winModal').classList.add('show');
   Sound.win();
+
+  // 通关庆祝爱心雨
+  for (let i = 0; i < 20; i++) {
+    setTimeout(() => spawnHeart(), i * 80);
+  }
 }
 
-function newGame() {
-  score = 0; moves = 0;
-  document.getElementById('winModal').classList.remove('show');
-  makeBoard();
-  renderBoard();
-  updateHUD();
+function showLose() {
+  if (document.getElementById('loseModal').classList.contains('show')) return;
+  gameActive = false;
+  document.getElementById('loseModal').classList.add('show');
+  Sound.lose();
 }
 
-document.getElementById('newGame').addEventListener('click', newGame);
+document.getElementById('newGame').addEventListener('click', () => {
+  Sound.select();
+  startGame();
+});
 document.getElementById('shuffle').addEventListener('click', () => { Sound.select(); shuffleBoard(); });
 document.getElementById('hintBtn').addEventListener('click', () => { Sound.select(); showHint(); });
-document.getElementById('playAgain').addEventListener('click', newGame);
+document.getElementById('playAgain').addEventListener('click', () => {
+  document.getElementById('winModal').classList.remove('show');
+  startGame();
+});
+document.getElementById('retryBtn').addEventListener('click', () => {
+  document.getElementById('loseModal').classList.remove('show');
+  startGame();
+});
+document.getElementById('backToMenuBtn').addEventListener('click', () => {
+  document.getElementById('loseModal').classList.remove('show');
+  document.getElementById('gameScreen').classList.remove('show');
+  document.getElementById('startScreen').classList.remove('hide');
+  renderLevels();
+});
+document.getElementById('nextLevelBtn').addEventListener('click', () => {
+  document.getElementById('winModal').classList.remove('show');
+  const diff = DIFFICULTY[currentDiff];
+  if (currentLevel < diff.levels) {
+    currentLevel++;
+  }
+  startGame();
+});
 
 // 跨标签页同步配置
 window.addEventListener('storage', e => {
   if (e.key === 'matchGameConfig' && e.newValue) {
     try {
       CONFIG = Object.assign({}, DEFAULT_CONFIG, JSON.parse(e.newValue));
-      document.getElementById('title-text').textContent = CONFIG.title || DEFAULT_CONFIG.title;
-      renderBoard();
+      applyConfig();
+      if (gameActive) renderBoard();
     } catch (err) {}
   }
 });
 
-newGame();
+// 初始化
+renderLevels();
 </script>
 </body>
 </html>
