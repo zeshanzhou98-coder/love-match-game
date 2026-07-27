@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>消消乐 · 管理后台</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+    background: linear-gradient(135deg, #ffe4ec 0%, #ffd1dc 50%, #ffe9f3 100%);
+    min-height: 100vh;
+    color: #4a2c3a;
+  }
+
+  /* 登录页 */
+  .auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .auth-card {
+    background: #fff;
+    border-radius: 22px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 20px 60px rgba(255, 100, 140, .25);
+    text-align: center;
+  }
+  .auth-card .logo {
+    font-size: 48px;
+    margin-bottom: 8px;
+  }
+  .auth-card h1 {
+    color: #e63b6b;
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+  .auth-card .sub {
+    font-size: 13px;
+    color: #b03060;
+    margin-bottom: 22px;
+    opacity: .8;
+  }
+  .form-group {
+    margin-bottom: 14px;
+    text-align: left;
+  }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #b03060;
+    margin-bottom: 6px;
+  }
+  .form-group input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 2px solid #ffd6e3;
+    border-radius: 12px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+    font-family: inherit;
+    background: #fffafc;
+    /* 关键：保证中文不乱码 */
+    unicode-bidi: plaintext;
+  }
+  .form-group input:focus {
+    border-color: #ff6b9d;
+  }
+  .auth-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ff7aa6, #ff4d88);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(255, 80, 130, .35);
+    margin-top: 8px;
+    transition: transform .15s;
+    letter-spacing: 1px;
+  }
+  .auth-btn:active { transform: scale(.97); }
+  .auth-error {
+    color: #d63060;
+    font-size: 13px;
+    margin-top: 8px;
+    min-height: 18px;
+  }
+  .auth-hint {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #b03060;
+    opacity: .65;
+  }
+
+  /* 后台主页 */
+  .admin-page { display: none; padding: 20px; max-width: 720px; margin: 0 auto; }
+  .admin-page.show { display: block; }
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 8px 20px rgba(255, 120, 150, .15);
+  }
+  .admin-header h1 {
+    color: #e63b6b;
+    font-size: 18px;
+  }
+  .admin-header .logout {
+    background: transparent;
+    border: 2px solid #ffd6e3;
+    color: #d63060;
+    padding: 6px 14px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all .2s;
+  }
+  .admin-header .logout:hover { background: #ffe9f3; }
+
+  .card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 8px 20px rgba(255, 120, 150, .12);
+  }
+  .card h2 {
+    color: #e63b6b;
+    font-size: 16px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .field {
+    margin-bottom: 14px;
+  }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #b03060;
+    margin-bottom: 6px;
+  }
+  .field input[type="text"] {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid #ffd6e3;
+    border-radius: 12px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+    font-family: inherit;
+    background: #fffafc;
+    /* 关键：保证中文输入不乱码 */
+    unicode-bidi: plaintext;
+    text-align: left;
+  }
+  .field input:focus {
+    border-color: #ff6b9d;
+  }
+  .field input::placeholder {
+    color: #c89aa9;
+    opacity: .8;
+  }
+
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .photo-item {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    border: 3px solid #ffd6e3;
+    cursor: pointer;
+    background: #fffafc;
+    transition: border-color .2s;
+  }
+  .photo-item:hover { border-color: #ff8fb1; }
+  .photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+  .photo-item .upload-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #b03060;
+    background: rgba(255, 230, 240, .85);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .photo-item:hover .upload-icon { opacity: 1; }
+  .photo-item .del-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255, 60, 100, .9);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 22px;
+    text-align: center;
+    display: none;
+  }
+  .photo-item:hover .del-btn { display: block; }
+  .photo-item input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .actions-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #ff7aa6, #ff4d88);
+    color: #fff;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(255, 80, 130, .3);
+    transition: transform .15s;
+    font-family: inherit;
+  }
+  .btn-primary:active { transform: scale(.97); }
+  .btn-secondary {
+    background: #fff;
+    color: #d63060;
+    border: 2px solid #ffd6e3;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: inherit;
+  }
+  .btn-secondary:hover { background: #ffe9f3; }
+
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #fff;
+    color: #e63b6b;
+    padding: 12px 24px;
+    border-radius: 22px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(255, 100, 140, .3);
+    transition: transform .3s ease;
+    z-index: 100;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .preview-link {
+    background: #fffafc;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    color: #b03060;
+    word-break: break-all;
+    margin-top: 10px;
+    border: 1px dashed #ffd6e3;
+  }
+  .preview-link b { color: #e63b6b; }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 6px;
+  }
+  .stat-row .stat-item {
+    text-align: center;
+  }
+  .stat-row .stat-item .num {
+    font-size: 22px;
+    font-weight: 700;
+    color: #e63b6b;
+  }
+  .stat-row .stat-item .label {
+    font-size: 12px;
+    color: #b03060;
+    opacity: .8;
+  }
+
+  /* 防止输入框出现乱码 - 使用更明确的属性 */
+  input[type="text"], input[type="password"] {
+    direction: ltr;
+    text-align: left;
+    font-feature-settings: normal;
+  }
+</style>
+</head>
+<body>
+
+<!-- 登录页 -->
+<div class="auth-page" id="authPage">
+  <div class="auth-card">
+    <div class="logo">💖</div>
+    <h1>管理后台</h1>
+    <p class="sub">消消乐 · 后台管理</p>
+    <form id="loginForm" autocomplete="off">
+      <div class="form-group">
+        <label for="username">账号</label>
+        <input type="text" id="username" name="username" placeholder="请输入账号" required />
+      </div>
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input type="password" id="password" name="password" placeholder="请输入密码" required />
+      </div>
+      <button type="submit" class="auth-btn">登 录</button>
+      <div class="auth-error" id="authError"></div>
+    </form>
+    <p class="auth-hint">默认账号：admin &nbsp;|&nbsp; 密码：admin123</p>
+  </div>
+</div>
+
+<!-- 后台主页 -->
+<div class="admin-page" id="adminPage">
+  <div class="admin-header">
+    <h1>💖 消消乐 · 后台管理</h1>
+    <button class="logout" id="logoutBtn">退出登录</button>
+  </div>
+
+  <!-- 状态卡片 -->
+  <div class="card">
+    <h2>📊 当前状态</h2>
+    <div class="stat-row">
+      <div class="stat-item"><div class="num" id="statPhotos">0</div><div class="label">已配置照片</div></div>
+      <div class="stat-item"><div class="num" id="statTitleLen">0</div><div class="label">标题字数</div></div>
+    </div>
+  </div>
+
+  <!-- 标题设置 -->
+  <div class="card">
+    <h2>✏️ 修改标题</h2>
+    <div class="field">
+      <label for="titleInput">游戏标题（显示在游戏顶部）</label>
+      <input type="text" id="titleInput" placeholder="请输入新标题" maxlength="40" />
+    </div>
+    <div class="actions-row">
+      <button class="btn-primary" id="saveTitleBtn">💾 保存标题</button>
+      <button class="btn-secondary" id="resetTitleBtn">恢复默认</button>
+    </div>
+  </div>
+
+  <!-- 照片设置 -->
+  <div class="card">
+    <h2>📷 替换照片（最多 6 张）</h2>
+    <p style="font-size:12px;color:#b03060;opacity:.8;margin-bottom:12px;">点击任意方格上传新照片，建议方块尺寸（1:1）。上传后点击保存立即生效。</p>
+    <div class="photo-grid" id="photoGrid"></div>
+    <div class="actions-row">
+      <button class="btn-primary" id="savePhotosBtn">💾 保存照片</button>
+      <button class="btn-secondary" id="resetPhotosBtn">恢复默认</button>
+    </div>
+    <div class="preview-link">
+      💡 提示：保存后需重新打开游戏页面（或刷新），新配置才会生效。<br/>
+      游戏地址：<b id="gamePath"></b>
+    </div>
+  </div>
+
+  <!-- 账号密码 -->
+  <div class="card">
+    <h2>🔐 修改登录账号密码</h2>
+    <div class="field">
+      <label for="newUser">账号</label>
+      <input type="text" id="newUser" placeholder="新账号" maxlength="20" />
+    </div>
+    <div class="field">
+      <label for="newPass">密码</label>
+      <input type="text" id="newPass" placeholder="新密码（至少 6 位）" maxlength="30" />
+    </div>
+    <div class="actions-row">
+      <button class="btn-primary" id="saveCredBtn">💾 保存账号密码</button>
+    </div>
+  </div>
+
+  <!-- 测试入口 -->
+  <div class="card">
+    <h2>🎮 测试入口</h2>
+    <p style="font-size:13px;color:#b03060;margin-bottom:12px;">保存后点击下面的按钮打开游戏预览：</p>
+    <div class="actions-row">
+      <button class="btn-primary" id="previewBtn">▶️ 打开游戏</button>
+      <button class="btn-secondary" id="exportBtn">📦 导出配置 JSON</button>
+      <button class="btn-secondary" id="importBtn">📥 导入配置</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" />
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ========== 工具 ========== */
+function $(id) { return document.getElementById(id); }
+function showToast(msg, ok = true) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.style.background = ok ? '#fff' : '#ffe0e6';
+  t.style.color = ok ? '#e63b6b' : '#b03040';
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+/* ========== 账号密码（localStorage 持久化） ========== */
+const CRED_KEY = 'matchGameAdminCred';
+function loadCred() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CRED_KEY) || '{}');
+    if (c && c.u && c.p) return c;
+  } catch (e) {}
+  return { u: 'admin', p: 'admin123' };
+}
+function saveCred(u, p) { localStorage.setItem(CRED_KEY, JSON.stringify({ u, p })); }
+
+/* ========== 配置（标题 + 照片 base64） ========== */
+const CONFIG_KEY = 'matchGameConfig';
+const DEFAULT_PHOTOS = [
+  '../photos/photo1.jpg',
+  '../photos/photo2.jpg',
+  '../photos/photo3.jpg',
+  '../photos/photo4.jpg',
+  '../photos/photo5.jpg'
+];
+const DEFAULT_TITLE = '生日消消乐 · 甜蜜闯关';
+
+function loadConfig() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}');
+    return {
+      title: typeof c.title === 'string' ? c.title : DEFAULT_TITLE,
+      photos: Array.isArray(c.photos) && c.photos.length > 0 ? c.photos.slice(0, 6) : DEFAULT_PHOTOS.slice()
+    };
+  } catch (e) {
+    return { title: DEFAULT_TITLE, photos: DEFAULT_PHOTOS.slice() };
+  }
+}
+function saveConfig(cfg) {
+  // 确保序列化干净，UTF-8 正常
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+}
+
+/* ========== 登录 ========== */
+$('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const u = $('username').value.trim();
+  const p = $('password').value;
+  const cred = loadCred();
+  if (u === cred.u && p === cred.p) {
+    sessionStorage.setItem('matchGameAdminLogged', '1');
+    showAdmin();
+  } else {
+    $('authError').textContent = '账号或密码错误';
+  }
+});
+
+function showAdmin() {
+  $('authPage').style.display = 'none';
+  $('adminPage').classList.add('show');
+  renderConfig();
+  renderPhotos();
+  renderCredInputs();
+  // 显示游戏路径
+  const path = location.href.replace(/admin\/.*$/, '') + (location.href.includes('/admin/') ? '../index.html' : 'index.html');
+  $('gamePath').textContent = path;
+}
+function showAuth() {
+  $('authPage').style.display = 'flex';
+  $('adminPage').classList.remove('show');
+  $('username').value = '';
+  $('password').value = '';
+  $('authError').textContent = '';
+}
+
+$('logoutBtn').addEventListener('click', () => {
+  sessionStorage.removeItem('matchGameAdminLogged');
+  showAuth();
+});
+
+// 自动登录
+if (sessionStorage.getItem('matchGameAdminLogged') === '1') {
+  showAdmin();
+}
+
+/* ========== 渲染配置 ========== */
+function renderConfig() {
+  const cfg = loadConfig();
+  $('titleInput').value = cfg.title;
+  $('statPhotos').textContent = cfg.photos.length;
+  $('statTitleLen').textContent = cfg.title.length;
+  $('titleInput').addEventListener('input', () => {
+    $('statTitleLen').textContent = $('titleInput').value.length;
+  });
+}
+
+function renderPhotos() {
+  const grid = $('photoGrid');
+  const cfg = loadConfig();
+  // 凑到 6 个槽位
+  const slots = cfg.photos.slice();
+  while (slots.length < 6) slots.push('');
+  grid.innerHTML = '';
+  slots.forEach((photo, i) => {
+    const item = document.createElement('div');
+    item.className = 'photo-item';
+    item.dataset.idx = i;
+    item.innerHTML = `
+      ${photo ? `<img src="${photo}" alt="" />` : ''}
+      <div class="upload-icon">${photo ? '🔄 替换' : '➕ 上传'}</div>
+      ${photo ? `<button class="del-btn" type="button" title="删除">×</button>` : ''}
+      <input type="file" accept="image/*" />
+    `;
+    grid.appendChild(item);
+  });
+
+  // 绑定上传
+  grid.querySelectorAll('.photo-item').forEach(item => {
+    const idx = +item.dataset.idx;
+    const fileInput = item.querySelector('input[type="file"]');
+    const delBtn = item.querySelector('.del-btn');
+
+    fileInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { showToast('请选择图片文件', false); return; }
+      if (file.size > 4 * 1024 * 1024) { showToast('图片太大（限制 4MB）', false); return; }
+
+      const reader = new FileReader();
+      reader.onload = ev => {
+        // 压缩
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const max = 240;
+          let w = img.width, h = img.height;
+          if (w > h) { h = max * h / w; w = max; }
+          else        { w = max * w / h; h = max; }
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+
+          const cfg = loadConfig();
+          cfg.photos[idx] = dataUrl;
+          saveConfig(cfg);
+          renderPhotos();
+          $('statPhotos').textContent = loadConfig().photos.filter(Boolean).length;
+          showToast('照片已就位，记得点保存哦 💕');
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    if (delBtn) {
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const cfg = loadConfig();
+        cfg.photos[idx] = '';
+        cfg.photos = cfg.photos.filter(Boolean);
+        saveConfig(cfg);
+        renderPhotos();
+        $('statPhotos').textContent = loadConfig().photos.filter(Boolean).length;
+        showToast('已删除该照片槽位');
+      });
+    }
+  });
+}
+
+function renderCredInputs() {
+  const c = loadCred();
+  $('newUser').value = c.u === 'admin' ? '' : c.u;
+  $('newPass').value = '';
+  $('newPass').placeholder = c.p === 'admin123' ? '新密码（至少 6 位）' : '修改密码';
+}
+
+/* ========== 操作 ========== */
+$('saveTitleBtn').addEventListener('click', () => {
+  const t = $('titleInput').value.trim();
+  if (!t) { showToast('标题不能为空', false); return; }
+  const cfg = loadConfig();
+  cfg.title = t;
+  saveConfig(cfg);
+  $('statTitleLen').textContent = t.length;
+  showToast('标题已保存 ✨ 下次打开游戏生效');
+});
+
+$('resetTitleBtn').addEventListener('click', () => {
+  const cfg = loadConfig();
+  cfg.title = DEFAULT_TITLE;
+  saveConfig(cfg);
+  renderConfig();
+  showToast('已恢复默认标题');
+});
+
+$('savePhotosBtn').addEventListener('click', () => {
+  // 当前已经实时保存到 localStorage 了，这里再统一确认
+  const cfg = loadConfig();
+  // 清理空字符串
+  cfg.photos = cfg.photos.filter(Boolean);
+  if (cfg.photos.length < 3) { showToast('至少需要 3 张照片', false); return; }
+  saveConfig(cfg);
+  renderPhotos();
+  showToast(`已保存 ${cfg.photos.length} 张照片 🎉`);
+});
+
+$('resetPhotosBtn').addEventListener('click', () => {
+  if (!confirm('确定恢复默认照片吗？此操作不可撤销。')) return;
+  const cfg = loadConfig();
+  cfg.photos = DEFAULT_PHOTOS.slice();
+  saveConfig(cfg);
+  renderPhotos();
+  $('statPhotos').textContent = cfg.photos.length;
+  showToast('已恢复默认照片');
+});
+
+$('saveCredBtn').addEventListener('click', () => {
+  const u = $('newUser').value.trim();
+  const p = $('newPass').value;
+  const cur = loadCred();
+  const newU = u || cur.u;
+  const newP = p || cur.p;
+  if (newP.length < 6) { showToast('密码至少 6 位', false); return; }
+  saveCred(newU, newP);
+  $('newPass').value = '';
+  showToast('账号密码已更新 ✅ 下次用新账号密码登录');
+});
+
+/* 预览 */
+$('previewBtn').addEventListener('click', () => {
+  const path = $('gamePath').textContent;
+  window.open(path, '_blank');
+});
+
+/* 导出 / 导入 */
+$('exportBtn').addEventListener('click', () => {
+  const cfg = loadConfig();
+  const data = JSON.stringify(cfg, null, 2);
+  const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'match-game-config-' + Date.now() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('配置已导出');
+});
+
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const cfg = JSON.parse(ev.target.result);
+      if (typeof cfg.title === 'string' && Array.isArray(cfg.photos)) {
+        saveConfig(cfg);
+        renderConfig();
+        renderPhotos();
+        showToast('配置导入成功 🎉');
+      } else {
+        showToast('配置文件格式错误', false);
+      }
+    } catch (err) {
+      showToast('解析失败：' + err.message, false);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+});
+</script>
+</body>
+</html>
